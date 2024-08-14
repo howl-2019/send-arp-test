@@ -58,8 +58,7 @@ char* get_mac_address(const char *iface_name) {
 
     // MAC 주소를 문자열로 변환
     unsigned char *mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
-    snprintf(mac_str, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    snprintf(mac_str, 18, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     close(fd);
     return mac_str;
@@ -130,7 +129,7 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-           	strncpy(target[t_index], argv[i], 15);
+			strncpy(target[t_index], argv[i], 15);
             target[t_index][15] = '\0';
             //printf("target: %s\n", target[t_index]);
             t_index++;
@@ -148,7 +147,7 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 
 	char* dev = ifname;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	pcap_t* handle = pcap_open_live(dev, 0, 0, 0, errbuf);
+	pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
 	if (handle == nullptr) {
 		fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
 		return -1;
@@ -199,8 +198,8 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 	
 	EthArpPacket packet;
 
-	packet.eth_.dmac_ = Mac("00:00:00:00:00:00"); //victim MAC
-	packet.eth_.smac_ = Mac("00:00:00:00:00:00"); //my MAC
+	packet.eth_.dmac_ = Mac(victim_mac); //victim MAC
+	packet.eth_.smac_ = Mac(my_mac); //my MAC
 	packet.eth_.type_ = htons(EthHdr::Arp);
 
 	packet.arp_.hrd_ = htons(ArpHdr::ETHER);
