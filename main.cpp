@@ -65,6 +65,46 @@ char* get_mac_address(const char *iface_name) {
     return mac_str;
 }
 
+char* get_ip_address(const char *iface_name) {
+    struct ifaddrs *ifaddr, *ifa;
+    char *ip_str = NULL;
+
+    // 네트워크 인터페이스 주소를 가져옴
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        exit(EXIT_FAILURE);
+    }
+
+    // 인터페이스 목록을 순회
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) continue;
+
+        // 인터페이스 이름이 일치하고 IPv4인 경우
+        if (strcmp(ifa->ifa_name, iface_name) == 0 && ifa->ifa_addr->sa_family == AF_INET) {
+            ip_str = (char *)malloc(INET_ADDRSTRLEN); // "xxx.xxx.xxx.xxx" + NULL
+            if (ip_str == NULL) {
+                perror("malloc");
+                exit(EXIT_FAILURE);
+            }
+
+            // IP 주소를 문자열로 변환
+            struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &addr->sin_addr, ip_str, INET_ADDRSTRLEN);
+            break;
+        }
+    }
+
+    freeifaddrs(ifaddr);
+
+    // IP 주소를 찾지 못했을 경우
+    if (ip_str == NULL) {
+        fprintf(stderr, "Could not find IP address for interface %s\n", iface_name);
+        exit(EXIT_FAILURE);
+    }
+
+    return ip_str;
+}
+
 
 void usage() {
 	printf("syntax: send-arp-test <interface>\n");
@@ -114,7 +154,8 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 		return -1;
 	}
 	
-	char *my_mac = get_mac_address(interface_name);
+	char *my_mac = get_mac_address(dev);
+	char *my_ip = get_ip_address(dev);
 	char victim_mac[100];
 
 	packet.eth_.dmac_ = Mac("ff:ff:ff:ff:ff:ff"); //victim MAC
@@ -127,7 +168,7 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 	packet.arp_.pln_ = Ip::SIZE;
 	packet.arp_.op_ = htons(ArpHdr::Request);
 	packet.arp_.smac_ = Mac(my_mac); //my MAC
-	packet.arp_.sip_ = htonl(Ip(gateway_addr)); //gateway
+	packet.arp_.sip_ = htonl(Ip(my_ip)); //my IP
 	packet.arp_.tmac_ = Mac("00:00:00:00:00:00"); //victim MAC
 	packet.arp_.tip_ = htonl(Ip(victim_addr)); //victim IP
 
@@ -152,7 +193,6 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 			victim_mac = eth->smac;
 			break;
 		}
-
 	}
 	
 
