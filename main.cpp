@@ -85,7 +85,7 @@ int get_wlan_mac(char *ifname, unsigned char *mac) {
 }
 
 
-int arp_packat(char* ifname, char* gateway_addr, char* victim_addr) {
+int arp_packat(char* ifname, char* victim_addr, char* gateway_addr) {
 
 	char* dev = ifname;
 	char errbuf[PCAP_ERRBUF_SIZE];
